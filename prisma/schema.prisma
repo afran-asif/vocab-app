@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ReviewRating {
+  AGAIN
+  HARD
+  GOOD
+  EASY
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  words   Word[]
+  reviews ReviewLog[]
+}
+
+model Word {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  term          String
+  meaning       String
+  example       String?
+  partOfSpeech  String?
+  pronunciation String?
+  tags          String[] @default([])
+
+  ease           Float     @default(2.5)
+  interval       Int       @default(0)
+  repetitions    Int       @default(0)
+  dueAt          DateTime  @default(now())
+  lastReviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviewLogs ReviewLog[]
+
+  @@unique([userId, term])
+  @@index([userId, dueAt])
+  @@index([userId, createdAt])
+}
+
+model ReviewLog {
+  id     String @id @default(cuid())
+  wordId String
+  word   Word   @relation(fields: [wordId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rating       ReviewRating
+  intervalDays Int
+  easeAfter    Float
+  reviewedAt   DateTime     @default(now())
+
+  @@index([userId, reviewedAt])
+  @@index([wordId, reviewedAt])
+}
