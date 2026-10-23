@@ -17,7 +17,9 @@ export default async function DashboardLayout({
     <div className="min-h-screen">
       <header className="flex items-center justify-between border-b px-6 py-3">
         <nav className="flex gap-4 text-sm">
-          <Link href="/dashboard" className="font-semibold">Vocab</Link>
+            <Link href="/dashboard" className="font-semibold">Vocab</Link>
+            <Link href="/dashboard/words">Words</Link>
+            <Link href="/dashboard/review">Review</Link>
         </nav>
         <div className="flex items-center gap-4 text-sm">
           <span className="text-gray-600">{session.user.email}</span>

@@ -1,0 +1,12 @@
+import { z } from "zod";
+
+export const wordSchema = z.object({
+  term: z.string().trim().min(1, "শব্দ লিখো").max(100),
+  meaning: z.string().trim().min(1, "অর্থ লিখো").max(500),
+  example: z.string().trim().max(500).optional(),
+  partOfSpeech: z.string().trim().max(50).optional(),
+  pronunciation: z.string().trim().max(100).optional(),
+  tags: z.string().trim().max(200).optional(),
+});
+
+export type WordInput = z.infer<typeof wordSchema>;
