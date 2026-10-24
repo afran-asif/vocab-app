@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export type DictionaryResult = {
+  term: string;
+  pronunciation: string;
+  partOfSpeech: string;
+  meaning: string;
+  example: string;
+  synonyms: string[];
+};
+
+/* ---------- Source 1: dictionaryapi.dev ---------- */
+
 const entrySchema = z.object({
   word: z.string(),
   phonetic: z.string().optional(),
@@ -21,30 +32,20 @@ const entrySchema = z.object({
   ),
 });
 
-const responseSchema = z.array(entrySchema);
-
-export type DictionaryResult = {
-  term: string;
-  pronunciation: string;
-  partOfSpeech: string;
-  meaning: string;
-  example: string;
-  synonyms: string[];
-};
-
-export async function lookupWord(term: string): Promise<DictionaryResult | null> {
+async function lookupFreeDictionary(term: string): Promise<DictionaryResult | null> {
   const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`;
+  const response = await fetch(url, { cache: "no-store" });
 
-  const response = await fetch(url, { cache: "force-cache" });
-  if (!response.ok) return null;
+  if (response.status === 404) return null; // word sotti nai
+  if (!response.ok) throw new Error(`Free Dictionary API ${response.status}`);
 
-  const parsed = responseSchema.safeParse(await response.json());
-  if (!parsed.success) return null;
+  const parsed = z.array(entrySchema).safeParse(await response.json());
+  if (!parsed.success) throw new Error("Free Dictionary: unexpected response shape");
 
   const entry = parsed.data[0];
-  const meaning = entry.meanings[0];
+  const meaning = entry?.meanings[0];
   const definition = meaning?.definitions[0];
-  if (!meaning || !definition) return null;
+  if (!entry || !meaning || !definition) return null;
 
   return {
     term: entry.word,
@@ -53,9 +54,99 @@ export async function lookupWord(term: string): Promise<DictionaryResult | null>
     partOfSpeech: meaning.partOfSpeech,
     meaning: meaning.definitions
       .slice(0, 2)
-      .map((item) => item.definition)
-      .join("; "),
+      .map((item) => item.definition.replace(/[.;\s]+$/, ""))
+      .join(", "),
     example: definition.example ?? "",
     synonyms: definition.synonyms.slice(0, 5),
   };
+}
+
+/* ---------- Source 2 (fallback): Wiktionary ---------- */
+
+const wiktionarySchema = z.object({
+  en: z
+    .array(
+      z.object({
+        partOfSpeech: z.string(),
+        definitions: z.array(
+          z.object({
+            definition: z.string(),
+            examples: z.array(z.string()).optional().default([]),
+          }),
+        ),
+      }),
+    )
+    .optional()
+    .default([]),
+});
+
+// Wiktionary-r text-e HTML tag thake, seta bad diye plain text banay
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function lookupWiktionary(term: string): Promise<DictionaryResult | null> {
+  const url = `https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(term)}`;
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      // Wikimedia chay request-e ekta descriptive User-Agent thakuk
+      "User-Agent": "vocab-app/1.0 (personal learning project; your-email-or-github-link)",
+      Accept: "application/json",
+    },
+  });
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Wiktionary API ${response.status}`);
+
+  const parsed = wiktionarySchema.safeParse(await response.json());
+  if (!parsed.success) throw new Error("Wiktionary: unexpected response shape");
+
+  for (const entry of parsed.data.en) {
+    const definitions = entry.definitions
+      .map((item) => ({
+        text: stripHtml(item.definition),
+        example: item.examples[0] ? stripHtml(item.examples[0]) : "",
+      }))
+      .filter((item) => item.text);
+
+    if (definitions.length === 0) continue;
+
+    return {
+      term,
+      pronunciation: "", // Wiktionary response-e pronunciation nai
+      partOfSpeech: entry.partOfSpeech.toLowerCase(),
+      meaning: definitions
+        .slice(0, 2)
+        .map((item) => item.text.replace(/[.;\s]+$/, ""))
+        .join(", "),
+      example: definitions.find((item) => item.example)?.example ?? "",
+      synonyms: [], // eitao nai
+    };
+  }
+
+  return null;
+}
+
+/* ---------- Public function ---------- */
+
+export async function lookupWord(term: string): Promise<DictionaryResult | null> {
+  const clean = term.trim().toLowerCase();
+
+  try {
+    return await lookupFreeDictionary(clean);
+  } catch (error) {
+    console.error("[dictionary] primary failed, trying Wiktionary:", error);
+  }
+
+  return lookupWiktionary(clean);
 }

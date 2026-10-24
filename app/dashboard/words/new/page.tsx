@@ -32,11 +32,13 @@ export default function NewWordPage() {
 
     setNotice("");
     startLookup(async () => {
-      const result = await lookup(fields.term);
-      if (!result) {
-        setNotice("শব্দটা পাওয়া যায়নি — নিজে লিখে নাও");
-        return;
-      }
+  try {
+    const result = await lookup(fields.term);
+    if (!result) {
+      setNotice("শব্দটা পাওয়া যায়নি — নিজে লিখে নাও");
+      return;
+    }
+    // ... baki setFields code ager moto
 
       setFields((current) => ({
         ...current,
@@ -47,8 +49,11 @@ export default function NewWordPage() {
         example: result.example || current.example,
         tags: current.tags || result.synonyms.join(", "),
       }));
-    });
-  }
+    } catch {
+      setNotice("Dictionary service এখন কাজ করছে না — পরে চেষ্টা করো বা নিজে লিখে নাও");
+    }
+  });
+}
 
   return (
     <div className="flex flex-col gap-6">
