@@ -40,7 +40,7 @@ export default function SpeakButton({ text, className = "" }: Props) {
       disabled={!text.trim()}
       aria-label={`Pronounce ${text}`}
       title="Pronounce"
-      className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${className}`}
+      className={`rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 ${className}`}
     >
       {speaking ? "🔊..." : "🔊"}
     </button>

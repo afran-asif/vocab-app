@@ -33,34 +33,45 @@ export default function NewWordPage() {
 
     setNotice("");
     startLookup(async () => {
-  try {
-    const result = await lookup(fields.term);
-    if (!result) {
-      setNotice("শব্দটা পাওয়া যায়নি — নিজে লিখে নাও");
-      return;
-    }
-    // ... baki setFields code ager moto
+      try {
+        const result = await lookup(fields.term);
+        if (!result) {
+          setNotice("শব্দটা পাওয়া যায়নি — নিজে লিখে নাও");
+          return;
+        }
 
-      setFields((current) => ({
-        ...current,
-        term: result.term,
-        pronunciation: result.pronunciation || current.pronunciation,
-        partOfSpeech: result.partOfSpeech,
-        meaning: result.meaning,
-        example: result.example || current.example,
-        tags: current.tags || result.synonyms.join(", "),
-      }));
-    } catch {
-      setNotice("Dictionary service এখন কাজ করছে না — পরে চেষ্টা করো বা নিজে লিখে নাও");
-    }
-  });
-}
+        setFields((current) => ({
+          ...current,
+          term: result.term,
+          pronunciation: result.pronunciation || current.pronunciation,
+          partOfSpeech: result.partOfSpeech,
+          meaning: result.meaning,
+          example: result.example || current.example,
+          tags: current.tags || result.synonyms.join(", "),
+        }));
+      } catch {
+        setNotice(
+          "Dictionary service এখন কাজ করছে না — পরে চেষ্টা করো বা নিজে লিখে নাও"
+        );
+      }
+    });
+  }
+
+  const inputClass =
+    "rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 transition focus:border-black focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-white";
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">নতুন শব্দ</h1>
-        <Link href="/dashboard/words" className="text-sm underline">← সব শব্দ</Link>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          নতুন শব্দ
+        </h1>
+        <Link
+          href="/dashboard/words"
+          className="text-sm font-medium text-gray-600 underline hover:text-black dark:text-neutral-400 dark:hover:text-white"
+        >
+          ← সব শব্দ
+        </Link>
       </div>
 
       <div className="flex gap-2">
@@ -69,20 +80,24 @@ export default function NewWordPage() {
           onChange={(event) => update("term", event.target.value)}
           name="term"
           placeholder="Word লিখে Lookup চাপো"
-          className="flex-1 rounded border px-3 py-2"
+          className={`flex-1 ${inputClass}`}
         />
         <button
           type="button"
           onClick={handleLookup}
           disabled={looking}
-          className="rounded border px-3 py-2 text-sm disabled:opacity-50"
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
         >
           {looking ? "খুঁজছি..." : "Lookup"}
         </button>
         <SpeakButton text={fields.term} />
       </div>
 
-      {notice && <p className="text-sm text-amber-700">{notice}</p>}
+      {notice && (
+        <p className="rounded-lg bg-amber-50 px-3.5 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          {notice}
+        </p>
+      )}
 
       <form action={formAction} className="flex flex-col gap-4">
         <input type="hidden" name="term" value={fields.term} />
@@ -91,14 +106,14 @@ export default function NewWordPage() {
           onChange={(event) => update("pronunciation", event.target.value)}
           name="pronunciation"
           placeholder="Pronunciation (optional)"
-          className="rounded border px-3 py-2"
+          className={inputClass}
         />
         <input
           value={fields.partOfSpeech}
           onChange={(event) => update("partOfSpeech", event.target.value)}
           name="partOfSpeech"
           placeholder="Part of speech"
-          className="rounded border px-3 py-2"
+          className={inputClass}
         />
         <textarea
           value={fields.meaning}
@@ -107,7 +122,7 @@ export default function NewWordPage() {
           required
           rows={3}
           placeholder="Meaning"
-          className="rounded border px-3 py-2"
+          className={inputClass}
         />
         <textarea
           value={fields.example}
@@ -115,22 +130,24 @@ export default function NewWordPage() {
           name="example"
           rows={2}
           placeholder="Example sentence"
-          className="rounded border px-3 py-2"
+          className={inputClass}
         />
         <input
           value={fields.tags}
           onChange={(event) => update("tags", event.target.value)}
           name="tags"
           placeholder="Tags, comma separated"
-          className="rounded border px-3 py-2"
+          className={inputClass}
         />
 
-        {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {state.error && (
+          <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+        )}
 
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+          className="rounded-lg bg-black px-4 py-2.5 font-medium text-white shadow-xs transition hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
         >
           {pending ? "Saving..." : "Save word"}
         </button>

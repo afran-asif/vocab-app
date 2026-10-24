@@ -28,9 +28,16 @@ export default async function ReviewPage() {
   if (dueWords.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <h1 className="text-2xl font-semibold">এখন review করার মতো কিছু নেই</h1>
-        <p className="text-gray-600">নতুন শব্দ যোগ করো, অথবা কাল আবার এসো।</p>
-        <Link href="/dashboard/words/new" className="rounded bg-black px-4 py-2 text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          এখন review করার মতো কিছু নেই
+        </h1>
+        <p className="text-gray-600 dark:text-neutral-400">
+          নতুন শব্দ যোগ করো, অথবা কাল আবার এসো।
+        </p>
+        <Link
+          href="/dashboard/words/new"
+          className="rounded-lg bg-black px-5 py-2.5 font-medium text-white shadow-xs transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
+        >
           শব্দ যোগ করো
         </Link>
       </div>
