@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import SpeakButton from "@/components/SpeakButton";
 
 export default async function WordsPage({
   searchParams,
@@ -67,6 +68,7 @@ export default async function WordsPage({
                     {tag}
                   </span>
                 ))}
+                <SpeakButton text={word.term} className="ml-auto" />
               </div>
               <p className="text-sm text-gray-700">{word.meaning}</p>
               {word.example && (

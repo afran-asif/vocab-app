@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { ReviewOutcome } from "@/lib/srs";
 import { reviewWord } from "./actions";
+import SpeakButton from "@/components/SpeakButton";
 
 type Card = {
   id: string;
@@ -68,7 +69,7 @@ export default function ReviewSession({ words }: { words: Card[] }) {
         {word.pronunciation && (
           <p className="text-sm text-gray-500">{word.pronunciation}</p>
         )}
-
+        <SpeakButton text={word.term} />
         {revealed ? (
           <div className="flex flex-col gap-2">
             {word.partOfSpeech && (

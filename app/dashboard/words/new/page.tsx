@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
 import { createWord, lookup, type WordFormState } from "../actions";
+import SpeakButton from "@/components/SpeakButton";
 
 const initialState: WordFormState = { error: "" };
 
@@ -78,6 +79,7 @@ export default function NewWordPage() {
         >
           {looking ? "খুঁজছি..." : "Lookup"}
         </button>
+        <SpeakButton text={fields.term} />
       </div>
 
       {notice && <p className="text-sm text-amber-700">{notice}</p>}
