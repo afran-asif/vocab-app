@@ -17,9 +17,20 @@ export default function NewWordPage() {
     pronunciation: "",
     partOfSpeech: "",
     meaning: "",
+    meaningBn: "",
     example: "",
     tags: "",
   });
+
+  const emptyFields = {
+    term: "",
+    pronunciation: "",
+    partOfSpeech: "",
+    meaning: "",
+    meaningBn: "",
+    example: "",
+    tags: "",
+  };
 
   function update(key: keyof typeof fields, value: string) {
     setFields((current) => ({ ...current, [key]: value }));
@@ -32,6 +43,9 @@ export default function NewWordPage() {
     }
 
     setNotice("");
+    // Ager word-er data muche felo, shudhu term-ta rakho
+    setFields((current) => ({ ...emptyFields, term: current.term }));
+
     startLookup(async () => {
       try {
         const result = await lookup(fields.term);
@@ -40,19 +54,17 @@ export default function NewWordPage() {
           return;
         }
 
-        setFields((current) => ({
-          ...current,
+        setFields({
           term: result.term,
-          pronunciation: result.pronunciation || current.pronunciation,
+          pronunciation: result.pronunciation,
           partOfSpeech: result.partOfSpeech,
           meaning: result.meaning,
-          example: result.example || current.example,
-          tags: current.tags || result.synonyms.join(", "),
-        }));
+          meaningBn: result.meaningBn ?? "",
+          example: result.example,
+          tags: result.synonyms.join(", "),
+        });
       } catch {
-        setNotice(
-          "Dictionary service এখন কাজ করছে না — পরে চেষ্টা করো বা নিজে লিখে নাও"
-        );
+        setNotice("Dictionary service এখন কাজ করছে না — পরে চেষ্টা করো বা নিজে লিখে নাও");
       }
     });
   }
@@ -115,14 +127,21 @@ export default function NewWordPage() {
           placeholder="Part of speech"
           className={inputClass}
         />
+        <input
+          value={fields.meaningBn}
+          onChange={(event) => update("meaningBn", event.target.value)}
+          name="meaningBn"
+          required
+          placeholder="বাংলা অর্থ"
+          className="rounded border px-3 py-2"
+        />
         <textarea
           value={fields.meaning}
           onChange={(event) => update("meaning", event.target.value)}
           name="meaning"
-          required
           rows={3}
-          placeholder="Meaning"
-          className={inputClass}
+          placeholder="English meaning (optional)"
+          className="rounded border px-3 py-2"
         />
         <textarea
           value={fields.example}

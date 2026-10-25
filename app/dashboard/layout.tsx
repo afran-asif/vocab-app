@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import ThemeToggle from "@/components/ThemeToggle";
+import NavLink from "@/components/NavLink";
 
 export default async function DashboardLayout({
   children,
@@ -20,22 +21,12 @@ export default async function DashboardLayout({
         <nav className="flex items-center gap-5 text-sm font-medium">
           <Link
             href="/dashboard"
-            className="font-bold tracking-tight text-gray-900 transition hover:text-black dark:text-neutral-100 dark:hover:text-white"
+            className="font-bold tracking-tight text-gray-900 transition hover:text-black dark:text-neutral-100 dark:hover:text-white text-xl"
           >
-            Vocab
+            VOCAB
           </Link>
-          <Link
-            href="/dashboard/words"
-            className="text-gray-600 transition hover:text-black dark:text-neutral-400 dark:hover:text-white"
-          >
-            Words
-          </Link>
-          <Link
-            href="/dashboard/review"
-            className="text-gray-600 transition hover:text-black dark:text-neutral-400 dark:hover:text-white"
-          >
-            Review
-          </Link>
+          <NavLink href="/dashboard/words">Words</NavLink>
+          <NavLink href="/dashboard/review">Review</NavLink>
         </nav>
         <div className="flex items-center gap-4 text-sm">
           <span className="hidden text-gray-600 dark:text-neutral-400 sm:inline">

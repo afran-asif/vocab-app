@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { ipaToBengali } from "./ipa-to-bengali";
 
 export type DictionaryResult = {
   term: string;
   pronunciation: string;
   partOfSpeech: string;
   meaning: string;
+  meaningBn?: string;
   example: string;
   synonyms: string[];
 };
@@ -137,16 +139,56 @@ async function lookupWiktionary(term: string): Promise<DictionaryResult | null> 
   return null;
 }
 
+async function translateToBengali(text: string): Promise<string> {
+  const clean = text.trim();
+  if (!clean) return "";
+
+  try {
+    const params = new URLSearchParams({
+      q: clean.slice(0, 100),
+      langpair: "en|bn",
+    });
+    if (process.env.MYMEMORY_EMAIL) params.set("de", process.env.MYMEMORY_EMAIL);
+
+    const response = await fetch(
+      `https://api.mymemory.translated.net/get?${params}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) return "";
+
+    const data = await response.json();
+    const translated: string = data?.responseData?.translatedText ?? "";
+
+    // Quota shesh hole MyMemory error message-ke-i "translation" hishebe pathay
+    if (Number(data?.responseStatus) !== 200) return "";
+    if (translated.toUpperCase().includes("MYMEMORY WARNING")) return "";
+
+    return translated.trim();
+  } catch (error) {
+    console.error("[translate] failed:", error);
+    return "";
+  }
+}
+
 /* ---------- Public function ---------- */
 
 export async function lookupWord(term: string): Promise<DictionaryResult | null> {
   const clean = term.trim().toLowerCase();
 
+  let result: DictionaryResult | null;
   try {
-    return await lookupFreeDictionary(clean);
+    result = await lookupFreeDictionary(clean);
   } catch (error) {
     console.error("[dictionary] primary failed, trying Wiktionary:", error);
+    result = await lookupWiktionary(clean);
   }
 
-  return lookupWiktionary(clean);
+  if (!result) return null;
+
+  const meaningBn = await translateToBengali(result.term);
+  return {
+    ...result,
+    pronunciation: ipaToBengali(result.pronunciation),
+    meaningBn,
+  };
 }

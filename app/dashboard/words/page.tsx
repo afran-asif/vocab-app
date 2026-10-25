@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import SpeakButton from "@/components/SpeakButton";
+import DeleteWordButton from "./delete-word-button";
 
 export default async function WordsPage({
   searchParams,
@@ -85,11 +86,17 @@ export default async function WordsPage({
                     {tag}
                   </span>
                 ))}
-                <SpeakButton text={word.term} className="ml-auto" />
+                <div className="ml-auto flex items-center gap-2">
+                  <SpeakButton text={word.term} />
+                  <DeleteWordButton wordId={word.id} term={word.term} />
+                </div>
               </div>
-              <p className="text-sm text-gray-700 dark:text-neutral-300">
-                {word.meaning}
-              </p>
+              {word.meaningBn && (
+                <p className="text-sm text-gray-700">{word.meaningBn}</p>
+              )}
+              {word.meaning && (
+                <p className="text-sm text-gray-500">{word.meaning}</p>
+              )}
               {word.example && (
                 <p className="text-sm italic text-gray-500 dark:text-neutral-400">
                   {word.example}

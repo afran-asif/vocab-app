@@ -38,6 +38,7 @@ model Word {
 
   term          String
   meaning       String
+  meaningBn     String?
   example       String?
   partOfSpeech  String?
   pronunciation String?

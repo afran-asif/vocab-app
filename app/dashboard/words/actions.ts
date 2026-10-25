@@ -19,6 +19,7 @@ export async function createWord(
   const parsed = wordSchema.safeParse({
     term: formData.get("term"),
     meaning: formData.get("meaning"),
+    meaningBn: formData.get("meaningBn"),   
     example: formData.get("example"),
     partOfSpeech: formData.get("partOfSpeech"),
     pronunciation: formData.get("pronunciation"),
@@ -29,7 +30,7 @@ export async function createWord(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const { term, meaning, example, partOfSpeech, pronunciation, tags } = parsed.data;
+  const { term, meaning, meaningBn, example, partOfSpeech, pronunciation, tags } = parsed.data;
   const userId = session.user.id;
 
   const existing = await prisma.word.findUnique({
@@ -44,7 +45,8 @@ export async function createWord(
     data: {
       userId,
       term,
-      meaning,
+      meaning: meaning ?? "",
+      meaningBn: meaningBn || null,
       example: example || null,
       partOfSpeech: partOfSpeech || null,
       pronunciation: pronunciation || null,
@@ -66,4 +68,16 @@ export async function lookup(term: string) {
   if (!clean) return null;
 
   return lookupWord(clean);
+}
+
+export async function deleteWord(wordId: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  await prisma.word.deleteMany({
+    where: { id: wordId, userId: session.user.id },
+  });
+
+  revalidatePath("/dashboard/words");
+  revalidatePath("/dashboard");
 }
