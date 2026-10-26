@@ -19,6 +19,7 @@ export default async function ReviewPage() {
       id: true,
       term: true,
       meaning: true,
+      meaningBn: true,
       example: true,
       pronunciation: true,
       partOfSpeech: true,
