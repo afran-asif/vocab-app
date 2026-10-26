@@ -75,3 +75,9 @@ model ReviewLog {
   @@index([userId, reviewedAt])
   @@index([wordId, reviewedAt])
 }
+model WordLookup {
+  id        String   @id @default(cuid())
+  term      String   @unique
+  data      Json
+  createdAt DateTime @default(now())
+}

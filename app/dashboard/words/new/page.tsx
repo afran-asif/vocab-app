@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
-import { createWord, lookup, type WordFormState } from "../actions";
+import { createWord, lookup, regenerate, type WordFormState } from "../actions";
+import type { DictionaryResult } from "@/lib/dictionary";
 import SpeakButton from "@/components/SpeakButton";
 
 const initialState: WordFormState = { error: "" };
@@ -11,7 +12,7 @@ export default function NewWordPage() {
   const [state, formAction, pending] = useActionState(createWord, initialState);
   const [looking, startLookup] = useTransition();
   const [notice, setNotice] = useState("");
-
+  const [lookedUp, setLookedUp] = useState(false);
   const [fields, setFields] = useState({
     term: "",
     pronunciation: "",
@@ -31,6 +32,18 @@ export default function NewWordPage() {
     example: "",
     tags: "",
   };
+  function applyResult(result: DictionaryResult) {
+    setFields({
+      term: result.term,
+      pronunciation: result.pronunciation,
+      partOfSpeech: result.partOfSpeech,
+      meaning: result.meaning,
+      meaningBn: result.meaningBn ?? "",
+      example: result.example,
+      tags: result.synonyms.join(", "),
+    });
+    setLookedUp(true);
+  }
 
   function update(key: keyof typeof fields, value: string) {
     setFields((current) => ({ ...current, [key]: value }));
@@ -43,7 +56,7 @@ export default function NewWordPage() {
     }
 
     setNotice("");
-    // Ager word-er data muche felo, shudhu term-ta rakho
+    setLookedUp(false);
     setFields((current) => ({ ...emptyFields, term: current.term }));
 
     startLookup(async () => {
@@ -53,18 +66,25 @@ export default function NewWordPage() {
           setNotice("শব্দটা পাওয়া যায়নি — নিজে লিখে নাও");
           return;
         }
-
-        setFields({
-          term: result.term,
-          pronunciation: result.pronunciation,
-          partOfSpeech: result.partOfSpeech,
-          meaning: result.meaning,
-          meaningBn: result.meaningBn ?? "",
-          example: result.example,
-          tags: result.synonyms.join(", "),
-        });
+        applyResult(result);
       } catch {
         setNotice("Dictionary service এখন কাজ করছে না — পরে চেষ্টা করো বা নিজে লিখে নাও");
+      }
+    });
+  }
+
+  function handleRegenerate() {
+    setNotice("");
+    startLookup(async () => {
+      try {
+        const result = await regenerate(fields.term);
+        if (!result) {
+          setNotice("নতুন করে তৈরি করা গেল না");
+          return;
+        }
+        applyResult(result);
+      } catch {
+        setNotice("AI এখন কাজ করছে না — পরে চেষ্টা করো");
       }
     });
   }
@@ -87,29 +107,29 @@ export default function NewWordPage() {
       </div>
 
       <div className="flex gap-2">
-        <input
-          value={fields.term}
-          onChange={(event) => update("term", event.target.value)}
-          name="term"
-          placeholder="Word লিখে Lookup চাপো"
-          className={`flex-1 ${inputClass}`}
-        />
-        <button
-          type="button"
-          onClick={handleLookup}
-          disabled={looking}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
-        >
-          {looking ? "খুঁজছি..." : "Lookup"}
-        </button>
-        <SpeakButton text={fields.term} />
-      </div>
-
+      <input
+        value={fields.term}
+        onChange={(event) => update("term", event.target.value)}
+        name="term"
+        placeholder="Word লিখে Lookup চাপো"
+        className="min-w-0 flex-1 rounded border px-3 py-2"
+      />
+      <button
+        type="button"
+        onClick={handleLookup}
+        disabled={looking}
+        className="shrink-0 whitespace-nowrap rounded border px-3 py-2 text-sm disabled:opacity-50"
+      >
+        {looking ? "খুঁজছি..." : "Lookup"}
+      </button>
+      <SpeakButton text={fields.term} />
+    </div>
       {notice && (
         <p className="rounded-lg bg-amber-50 px-3.5 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
           {notice}
         </p>
       )}
+
 
       <form action={formAction} className="flex flex-col gap-4">
         <input type="hidden" name="term" value={fields.term} />
@@ -170,6 +190,18 @@ export default function NewWordPage() {
         >
           {pending ? "Saving..." : "Save word"}
         </button>
+        {lookedUp && (
+          <button
+            type="button"
+            onClick={handleRegenerate}
+            disabled={looking}
+            title="অর্থ ভুল মনে হলে এখানে চাপো, নতুন করে তৈরি হবে"
+            className="shrink-0 whitespace-nowrap rounded border border-amber-300 px-3 py-2 text-sm text-amber-700 disabled:opacity-50 dark:border-amber-700 dark:text-amber-400"
+          >
+            <span className="hidden sm:inline">ভুল মনে হলে এটা চাপুন</span>
+            <span className="sm:hidden">🔄 ভুল?</span>
+          </button>
+        )}
       </form>
     </div>
   );

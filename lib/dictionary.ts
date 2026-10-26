@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { ipaToBengali } from "./ipa-to-bengali";
+import { prisma } from "./prisma";
+import { lookupWithAi, type AiEntry } from "./ai-dictionary";
 
 export type DictionaryResult = {
   term: string;
@@ -139,6 +141,8 @@ async function lookupWiktionary(term: string): Promise<DictionaryResult | null> 
   return null;
 }
 
+const BENGALI_SCRIPT = /[\u0980-\u09FF]/;
+
 async function translateToBengali(text: string): Promise<string> {
   const clean = text.trim();
   if (!clean) return "";
@@ -157,13 +161,23 @@ async function translateToBengali(text: string): Promise<string> {
     if (!response.ok) return "";
 
     const data = await response.json();
-    const translated: string = data?.responseData?.translatedText ?? "";
-
-    // Quota shesh hole MyMemory error message-ke-i "translation" hishebe pathay
     if (Number(data?.responseStatus) !== 200) return "";
-    if (translated.toUpperCase().includes("MYMEMORY WARNING")) return "";
 
-    return translated.trim();
+    const candidates: unknown[] = [
+      data?.responseData?.translatedText,
+      ...(Array.isArray(data?.matches)
+        ? data.matches.map((match: { translation?: unknown }) => match.translation)
+        : []),
+    ];
+
+    const best = candidates.find(
+      (item): item is string =>
+        typeof item === "string" &&
+        BENGALI_SCRIPT.test(item) &&
+        !item.toUpperCase().includes("MYMEMORY WARNING"),
+    );
+
+    return best?.trim() ?? "";
   } catch (error) {
     console.error("[translate] failed:", error);
     return "";
@@ -172,16 +186,19 @@ async function translateToBengali(text: string): Promise<string> {
 
 /* ---------- Public function ---------- */
 
-export async function lookupWord(term: string): Promise<DictionaryResult | null> {
+async function lookupFromDictionaries(term: string): Promise<DictionaryResult | null> {
   const clean = term.trim().toLowerCase();
 
   let result: DictionaryResult | null;
   try {
     result = await lookupFreeDictionary(clean);
+    if (result) console.log(`[lookup] "${clean}" → dictionaryapi.dev`);
   } catch (error) {
     console.error("[dictionary] primary failed, trying Wiktionary:", error);
     result = await lookupWiktionary(clean);
+    if (result) console.log(`[lookup] "${clean}" → Wiktionary`);
   }
+  
 
   if (!result) return null;
 
@@ -191,4 +208,106 @@ export async function lookupWord(term: string): Promise<DictionaryResult | null>
     pronunciation: ipaToBengali(result.pronunciation),
     meaningBn,
   };
+}
+
+// Prompt ba model bodlale ei number-ta barao
+const CACHE_VERSION = 2;
+const cacheKey = (term: string) => `v${CACHE_VERSION}:${term}`;
+/* ---------- AI + cache ---------- */
+
+const cachedSchema = z.object({
+  term: z.string(),
+  pronunciation: z.string(),
+  partOfSpeech: z.string(),
+  meaning: z.string(),
+  meaningBn: z.string().optional(),
+  example: z.string(),
+  synonyms: z.array(z.string()),
+});
+
+// Shudhu English akhor, space, hyphen, apostrophe. Cache-e nonsense jete debe na
+function isValidTerm(term: string): boolean {
+  return /^[a-z][a-z' -]{0,39}$/.test(term);
+}
+
+function fromAi(ai: AiEntry, fallbackTerm: string): DictionaryResult {
+  return {
+    term: ai.term.trim().toLowerCase() || fallbackTerm,
+    pronunciation: ai.pronunciationBn.trim(),
+    partOfSpeech: ai.partOfSpeech.trim().toLowerCase(),
+    meaning: ai.meaningEn.trim(),
+    meaningBn: ai.meaningBn.trim(),
+    example: ai.example.trim(),
+    synonyms: ai.synonyms.slice(0, 5),
+  };
+}
+
+async function readCache(term: string): Promise<DictionaryResult | null> {
+  try {
+    const row = await prisma.wordLookup.findUnique({ where: { term: cacheKey(term) } });
+    if (!row) return null;
+    const parsed = cachedSchema.safeParse(row.data);
+    return parsed.success ? parsed.data : null;
+  } catch (error) {
+    console.error("[cache] read failed:", error);
+    return null;
+  }
+}
+
+async function writeCache(term: string, result: DictionaryResult) {
+  try {
+    const data = JSON.parse(JSON.stringify(result));
+    await prisma.wordLookup.upsert({
+      where: { term: cacheKey(term) },
+      update: { data },
+      create: { term: cacheKey(term), data },
+    });
+  } catch (error) {
+    console.error("[cache] write failed:", error);
+  }
+}
+
+export async function lookupWord(term: string): Promise<DictionaryResult | null> {
+  const clean = term.trim().toLowerCase();
+  if (!isValidTerm(clean)) return null;
+
+  // 1. Cache
+  const cached = await readCache(clean);
+  if (cached) {
+    console.log(`[lookup] "${clean}" → cache`);
+    return cached;
+  }
+
+  // 2. AI
+  try {
+    const ai = await lookupWithAi(clean);
+    if (!ai) return null; // AI bollo eta English word na
+
+    const result = fromAi(ai, clean);
+    console.log(`[lookup] "${clean}" → AI (Gemini)`);
+    await writeCache(clean, result);
+    return result;
+
+  }  catch (error) {
+    console.error("[ai] failed, falling back to dictionaries:", error);
+  }
+
+  console.log(`[lookup] "${clean}" → dictionary fallback`);
+  return lookupFromDictionaries(clean);
+
+  // 3. Ager dictionary API-gulo
+  return lookupFromDictionaries(clean);
+}
+
+// Cache bypass kore AI diye notun kore toiri, tarpor cache-e overwrite
+export async function regenerateWord(term: string): Promise<DictionaryResult | null> {
+  const clean = term.trim().toLowerCase();
+  if (!isValidTerm(clean)) return null;
+
+  const ai = await lookupWithAi(clean, { temperature: 0.8 });
+  if (!ai) return null;
+
+  const result = fromAi(ai, clean);
+  await writeCache(clean, result);
+  return result;
 }

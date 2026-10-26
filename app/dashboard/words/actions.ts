@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { wordSchema } from "@/lib/validations/word";
-import { lookupWord } from "@/lib/dictionary";
+import { lookupWord, regenerateWord } from "@/lib/dictionary";
 
 export type WordFormState = { error: string };
 
@@ -80,4 +80,14 @@ export async function deleteWord(wordId: string) {
 
   revalidatePath("/dashboard/words");
   revalidatePath("/dashboard");
+}
+
+export async function regenerate(term: string) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const clean = term.trim().slice(0, 100);
+  if (!clean) return null;
+
+  return regenerateWord(clean);
 }
