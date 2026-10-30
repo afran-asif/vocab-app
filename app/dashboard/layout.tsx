@@ -25,6 +25,7 @@ export default async function DashboardLayout({
           >
             VOCAB
           </Link>
+          <NavLink href="/dashboard/discover">Discover</NavLink>
           <NavLink href="/dashboard/words">Words</NavLink>
           <NavLink href="/dashboard/review">Review</NavLink>
         </nav>
