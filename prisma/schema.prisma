@@ -81,3 +81,30 @@ model WordLookup {
   data      Json
   createdAt DateTime @default(now())
 }
+
+model Deck {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String
+  level       String?
+  createdAt   DateTime @default(now())
+
+  words DeckWord[]
+}
+
+model DeckWord {
+  id     String @id @default(cuid())
+  deckId String
+  deck   Deck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  term          String
+  meaning       String
+  meaningBn     String
+  example       String?
+  partOfSpeech  String?
+  pronunciation String?
+
+  @@unique([deckId, term])
+  @@index([deckId])
+}
