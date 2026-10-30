@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import SpeakButton from "@/components/SpeakButton";
-import AddButton from "./add-button";
+import AddButton, { WordCard } from "./add-button";
 
 export default async function DeckPage({
   params,
@@ -29,6 +28,7 @@ export default async function DeckPage({
 
   const have = new Set(myWords.map((word) => word.term.toLowerCase()));
   const remaining = deck.words.filter((word) => !have.has(word.term.toLowerCase()));
+  const generatedCount = deck.words.filter((w) => w.meaning && w.meaningBn).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -49,6 +49,12 @@ export default async function DeckPage({
           <p className="mt-1 text-sm text-gray-600 dark:text-neutral-400">
             {deck.description}
           </p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-neutral-500">
+            {deck.words.length}টি শব্দ
+            {generatedCount < deck.words.length && (
+              <> · {deck.words.length - generatedCount}টির details এখনো তৈরি হয়নি (click করলে হবে)</>
+            )}
+          </p>
         </div>
         {remaining.length > 0 ? (
           <AddButton
@@ -63,39 +69,15 @@ export default async function DeckPage({
         )}
       </div>
 
-      <ul className="flex flex-col divide-y rounded border">
-        {deck.words.map((word) => {
-          const added = have.has(word.term.toLowerCase());
-
-          return (
-            <li key={word.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <div className="flex min-w-0 flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{word.term}</span>
-                  {word.partOfSpeech && (
-                    <span className="text-xs text-gray-500">{word.partOfSpeech}</span>
-                  )}
-                  <SpeakButton text={word.term} />
-                </div>
-                <p className="text-sm text-gray-700 dark:text-neutral-300">
-                  {word.meaningBn}
-                </p>
-                <p className="text-sm text-gray-500">{word.meaning}</p>
-                {word.example && (
-                  <p className="text-sm italic text-gray-500">{word.example}</p>
-                )}
-              </div>
-
-              {added ? (
-                <span className="shrink-0 text-sm text-green-700 dark:text-green-400">
-                  ✓ যোগ করা আছে
-                </span>
-              ) : (
-                <AddButton deckSlug={deck.slug} deckWordId={word.id} label="+ Add" />
-              )}
-            </li>
-          );
-        })}
+      <ul className="flex flex-col divide-y rounded border dark:border-neutral-800">
+        {deck.words.map((word) => (
+          <WordCard
+            key={word.id}
+            word={word}
+            deckSlug={deck.slug}
+            alreadyAdded={have.has(word.term.toLowerCase())}
+          />
+        ))}
       </ul>
     </div>
   );

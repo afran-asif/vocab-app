@@ -99,8 +99,9 @@ model DeckWord {
   deck   Deck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
 
   term          String
-  meaning       String
-  meaningBn     String
+  // meaning/meaningBn are optional — they are generated on-demand when a user first views the word
+  meaning       String?
+  meaningBn     String?
   example       String?
   partOfSpeech  String?
   pronunciation String?

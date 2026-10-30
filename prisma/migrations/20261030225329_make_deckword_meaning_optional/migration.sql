@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "DeckWord" ALTER COLUMN "meaning" DROP NOT NULL,
+ALTER COLUMN "meaningBn" DROP NOT NULL;

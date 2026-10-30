@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 import NavLink from "@/components/NavLink";
+import { isAdmin } from "@/lib/admin";
 
 export default async function DashboardLayout({
   children,
@@ -28,6 +29,9 @@ export default async function DashboardLayout({
           <NavLink href="/dashboard/discover">Discover</NavLink>
           <NavLink href="/dashboard/words">Words</NavLink>
           <NavLink href="/dashboard/review">Review</NavLink>
+          {isAdmin(session.user.email) && (
+            <NavLink href="/dashboard/admin/decks">Admin</NavLink>
+          )}
         </nav>
         <div className="flex items-center gap-2.5 sm:gap-4 text-sm">
           <span className="hidden text-gray-600 dark:text-neutral-400 md:inline">
