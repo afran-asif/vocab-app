@@ -65,36 +65,67 @@ export async function addDeckWords(deckSlug: string, deckWordId?: string) {
 
   if (toAdd.length === 0) return { added: 0 };
 
-  // For words without details, generate now (sequentially to avoid rate limits)
-  const resolved = await Promise.all(
-    toAdd.map(async (word) => {
-      if (word.meaning && word.meaningBn) return word;
-      const result = await lookupWord(word.term);
-      if (!result) return word; // add with empty details if generation fails
-      // Persist back to DeckWord so future users get it free
+  // For words without details, generate now one at a time to avoid hammering the AI
+  const resolved: Array<{
+    term: string;
+    meaning: string;
+    meaningBn: string | null;
+    example: string | null;
+    partOfSpeech: string | null;
+    pronunciation: string | null;
+  }> = [];
+
+  for (const word of toAdd) {
+    if (word.meaning && word.meaningBn) {
+      resolved.push({
+        term: word.term,
+        meaning: word.meaning,
+        meaningBn: word.meaningBn,
+        example: word.example ?? null,
+        partOfSpeech: word.partOfSpeech ?? null,
+        pronunciation: word.pronunciation ?? null,
+      });
+      continue;
+    }
+
+    // Generate on-demand
+    const lookup = await lookupWord(word.term);
+    const meaning = lookup?.meaning ?? "";
+    const meaningBn = lookup?.meaningBn ?? null;
+
+    // Persist back to DeckWord so future users get it for free
+    if (lookup) {
       await prisma.deckWord.update({
         where: { id: word.id },
         data: {
-          meaning: result.meaning,
-          meaningBn: result.meaningBn ?? "",
-          example: result.example || null,
-          partOfSpeech: result.partOfSpeech || null,
-          pronunciation: result.pronunciation || null,
+          meaning,
+          meaningBn: meaningBn ?? "",
+          example: lookup.example || null,
+          partOfSpeech: lookup.partOfSpeech || null,
+          pronunciation: lookup.pronunciation || null,
         },
       });
-      return { ...word, ...result, meaningBn: result.meaningBn ?? "" };
-    }),
-  );
+    }
+
+    resolved.push({
+      term: word.term,
+      meaning,
+      meaningBn,
+      example: lookup?.example ?? word.example ?? null,
+      partOfSpeech: lookup?.partOfSpeech ?? word.partOfSpeech ?? null,
+      pronunciation: lookup?.pronunciation ?? word.pronunciation ?? null,
+    });
+  }
 
   const result = await prisma.word.createMany({
     data: resolved.map((word) => ({
       userId,
       term: word.term,
-      meaning: word.meaning ?? "",
-      meaningBn: word.meaningBn ?? null,
-      example: word.example ?? null,
-      partOfSpeech: word.partOfSpeech ?? null,
-      pronunciation: word.pronunciation ?? null,
+      meaning: word.meaning,      // always a string now (empty string if generation failed)
+      meaningBn: word.meaningBn,
+      example: word.example,
+      partOfSpeech: word.partOfSpeech,
+      pronunciation: word.pronunciation,
       tags: [],
     })),
     skipDuplicates: true,

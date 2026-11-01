@@ -269,8 +269,24 @@ export default function AddWordsForm({ deckSlug }: { deckSlug: string }) {
 
     setRunning(true);
     setResult(null);
+
+    // Send in batches of 500 to stay well under the 4MB server action body limit
+    const BATCH = 500;
+    let totalAdded = 0;
+    let totalUpdated = 0;
+    let totalSkipped = 0;
+    const allErrors: string[] = [];
+
     try {
-      const res = await bulkAddDeckWords(deckSlug, fileWords);
+      for (let i = 0; i < fileWords.length; i += BATCH) {
+        const batch = fileWords.slice(i, i + BATCH);
+        const res = await bulkAddDeckWords(deckSlug, batch);
+        totalAdded += res.added;
+        totalUpdated += res.updated;
+        totalSkipped += res.skipped;
+        allErrors.push(...res.errors);
+      }
+      const res = { added: totalAdded, updated: totalUpdated, skipped: totalSkipped, errors: allErrors };
       setResult(res);
       if (res.added > 0 || res.updated > 0) {
         setFileWords([]);
